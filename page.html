@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+
+        <!-- Bootstrap CSS -->
+        <link
+            rel="stylesheet"
+            href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+            integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+            crossorigin="anonymous"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/css/bootstrap-slider.min.css"
+            integrity="sha512-3q8fi8M0VS+X/3n64Ndpp6Bit7oXSiyCnzmlx6IDBLGlY5euFySyJ46RUlqIVs0DPCGOypqP8IRk/EyPvU28mQ=="
+            crossorigin="anonymous"
+        />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w==" crossorigin="anonymous" />
+
+        <title>Kuzya volume mixer</title>
+
+        <style>
+            .fill {
+                min-height: 100%;
+                height: 100%;
+            }
+            body,
+            html {
+                height: 100%;
+            }
+            .process-name {
+                max-width: 100%;
+                height: 4rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .main-container > .row {
+                flex-wrap: nowrap;
+                overflow: auto;
+                background-color: white;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- bootstrap https://getbootstrap.com/docs/4.0/components/buttons/ -->
+        <!-- slider https://github.com/seiyria/bootstrap-slider -->
+        <!-- slider examples: https://seiyria.com/bootstrap-slider/#example-4 -->
+        <div class="container fill main-container">
+            <div class="row align-items-center fill" id="slider-container">
+                <div class="col-sm-3">
+                    <div class="container fill">
+                        <button type="button" class="btn btn-primary" onclick="toggleFullscreen()">Fullscreen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optional JavaScript -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script
+            src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"
+        ></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/bootstrap-slider.min.js"
+            integrity="sha512-f0VlzJbcEB6KiW8ZVtL+5HWPDyW1+nJEjguZ5IVnSQkvZbwBt2RfCBY0CBO1PsMAqxxrG4Di6TfsCPP3ZRwKpA=="
+            crossorigin="anonymous"
+        ></script>
+        <script src="https://unpkg.com/socket.io-client@3.0.1/dist/socket.io.min.js"></script>
+
+        <script>
+            window.toggleFullscreen = function () {
+                const element = document.body.querySelector('body > .container');
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    element.requestFullscreen();
+                }
+            }
+
+            // заменится макросом на серваке
+            const initialData = $INITIAL_DATA$;
+
+            const WEBSOCKET_HOST = initialData?.host ?? '10.211.55.3';
+            const WEBSOCKET_PORT = initialData?.port ?? 8080;
+
+            class Slider {
+                renderContainerSelector = '#slider-container';
+
+                parentContainerSelector = '.slider-container';
+
+                constructor (id, name, value, onChange) {
+                    this.id = id;
+                    this.name = name;
+                    this.initialValue = value;
+
+                    this.#renderSliderLayout();
+                    this.#subscribeSliderChange(onChange);
+                }
+
+                #get$SliderRef () {
+                    return $(`#${this.id}`);
+                }
+
+                #subscribeSliderChange (callback) {
+                    const sliderRef = this.#get$SliderRef().slider();
+                    sliderRef.on('change', ({ value: { oldValue, newValue } }) => {
+                        callback(this);
+                    });
+                }
+
+                #renderSliderLayout () {
+                    const sliderContainer = document.querySelector(this.renderContainerSelector);
+                    const sliderLayout = `
+                        <div class="col-sm-3 slider-container">
+                            <div class="container fill">
+                                <div class="row">
+                                    <div
+                                        class="col align-items-center d-flex flex-column"
+                                    >
+                                        <p class="text-center process-name">
+                                            ${this.name}
+                                        </p>
+                                        <input
+                                            id="${this.id}"
+                                            type="text"
+                                            name="${this.id}"
+                                            class="slider"
+                                            data-provide="slider"
+                                            data-slider-max="1"
+                                            data-slider-min="0"
+                                            data-slider-step="0.01"
+                                            data-slider-value="${this.initialValue}"
+                                            data-slider-tooltip="hide"
+                                            data-slider-orientation="vertical"
+                                            data-slider-reversed="true"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    sliderContainer.insertAdjacentHTML('beforeend', sliderLayout);
+                }
+
+                get value () {
+                    return this.#get$SliderRef().slider('getValue');
+                }
+                set value (newValue) {
+                    this.#get$SliderRef().slider('setValue', newValue);
+                }
+
+                destroy () {
+                    const $sliderRef = this.#get$SliderRef();
+                    $sliderRef.slider('destroy');
+                    $sliderRef.parents(this.parentContainerSelector).remove();
+                }
+            }
+
+
+            const SOCKET_URL = `ws://${WEBSOCKET_HOST}:${WEBSOCKET_PORT}`;
+
+            console.log('connect to socket');
+            const socket = io(SOCKET_URL);
+
+            const slidersMap = new Map();
+
+            socket.on("connect", () => {
+                console.log('socket connected. clear existing sliders');
+
+                for (const [id, sliderInstance] of slidersMap) {
+                    sliderInstance.destroy();
+                    slidersMap.delete(id);
+                }
+            });
+
+            socket.on("disconnect", (reason) => {
+                console.log('socket disconnected');
+                console.log('>>> reason ==>', reason);
+            });
+
+            const globalHandleSliderChange = (sliderInstance) => {
+                socket.emit('volumeChanged', {
+                    id: sliderInstance.id,
+                    processName: sliderInstance.name,
+                    currentValue: sliderInstance.value,
+                });
+            };
+
+            socket.on('sliders', (sliders) => {
+                const unHandledSliders = new Map(
+                    slidersMap.entries()
+                );
+
+                for (const slider of sliders) {
+                    unHandledSliders.delete(slider.id);
+
+                    if (slidersMap.has(slider.id)) {
+                        console.log('already has slider', slider.id);
+                        continue;
+                    }
+
+                    console.log('create new slider', slider.id);
+                    const sliderInstance = new Slider(
+                        slider.id,
+                        slider.display_name,
+                        slider.volume,
+                        globalHandleSliderChange,
+                    );
+                    slidersMap.set(slider.id, sliderInstance);
+                }
+
+                for (const [id, sliderInstance] of unHandledSliders) {
+                    console.log('delete slider', id)
+                    sliderInstance.destroy();
+                    slidersMap.delete(id);
+                }
+            });
+
+            socket.on('adjustVolume', (slider) => {
+                if (!slidersMap.has(slider.id)) {
+                    console.log('no slider to adjust', slider.id);
+                    return;
+                }
+                console.log(`adjust slider ${slider.id} to volume ${slider.volume}`)
+                const sliderInstance = slidersMap.get(slider.id);
+                sliderInstance.value = slider.volume;
+            });
+
+        </script>
+    </body>
+</html>

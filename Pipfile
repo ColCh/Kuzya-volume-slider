@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pycaw = "*"
+websockets = "*"
+ptpython = "*"
+pywin32 = "*"
+pefile = "*"
+python-socketio = "*"
+aiohttp = "*"
+pyqrcode = "*"
+pypng = "*"
+
+[dev-packages]
+flake8 = "*"
+yapf = "*"
+mypy = "*"
+pyinstaller = "*"
+
+[requires]
+python_version = "3.9"
