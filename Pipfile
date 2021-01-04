@@ -22,3 +22,8 @@ pyinstaller = "*"
 
 [requires]
 python_version = "3.9"
+
+[scripts]
+build = 'python -O -m PyInstaller --noconfirm --version-file ./main_module.version.txt --hidden-import=engineio.async_drivers.aiohttp ./main_module.py'
+start = 'python main_module.py'
+start_built = 'start ./dist/main_module/main_module.exe'
