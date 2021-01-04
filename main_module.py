@@ -135,7 +135,7 @@ async def start_app():
         for removed_volume_channel in volume_scan_result['removed']:
 
             controller_uuid = VolumeController.get_uuid_by_win_identifier(
-                added_volume_channel.Identifier)
+                removed_volume_channel.Identifier)
 
             if controller_uuid not in volume_controllers:
                 continue
@@ -154,7 +154,7 @@ async def start_app():
         for other_volume_channel in volume_scan_result['other']:
 
             controller_uuid = VolumeController.get_uuid_by_win_identifier(
-                added_volume_channel.Identifier)
+                other_volume_channel.Identifier)
 
             if controller_uuid not in volume_controllers:
                 logger.info(f'skip controller {controller_uuid} (not exists)')
@@ -193,7 +193,6 @@ async def start_app():
         await emit_sliders()
 
         await asyncio.sleep(1)
-    pass
 
 
 async def start_webapp():
